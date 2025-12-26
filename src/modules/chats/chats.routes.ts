@@ -305,6 +305,29 @@ chats.post('/unmute', async (c) => {
 });
 
 /**
+ * POST /chat/unread
+ * Mark chat as unread
+ */
+chats.post('/unread', async (c) => {
+    const instanceId = c.get('instanceId');
+    const body = await c.req.json();
+    const { chatId } = chatIdSchema.parse(body);
+
+    try {
+        await waManager.markChatAsUnread(instanceId, chatId);
+
+        return c.json({
+            success: true,
+            message: 'Chat marked as unread',
+        });
+    } catch (error) {
+        throw new HTTPException(500, {
+            message: error instanceof Error ? error.message : 'Failed to mark chat as unread',
+        });
+    }
+});
+
+/**
  * POST /chat/read
  * Mark chat as read
  */

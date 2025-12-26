@@ -21,7 +21,8 @@ import {
     MessageCircle,
     UserCheck,
     Globe,
-    Lock
+    Lock,
+    Tag
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -36,6 +37,7 @@ export default function SettingsPage() {
         { id: 'chats', label: 'Chats', icon: MessageCircle },
         { id: 'contacts', label: 'Contatos', icon: Users },
         { id: 'groups', label: 'Grupos', icon: Users },
+        { id: 'labels', label: 'Etiquetas', icon: Tag },
     ];
 
     return (
@@ -252,6 +254,101 @@ export default function SettingsPage() {
   "chatId": "5511999999999@s.whatsapp.net",
   "limit": 50
 }`}
+                            />
+                        </div>
+                    )}
+
+                    {activeSection === 'chats' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <EndpointCard
+                                method="POST"
+                                path="/chat/delete"
+                                title="Deleta chat"
+                                description="Deleta um chat e todas as mensagens."
+                                body={`{
+  "chatId": "5511999999999@c.us"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/chat/archive"
+                                title="Arquivar/desarquivar chat"
+                                description="Arquiva ou desarquiva um chat. Use /chat/unarchive para desarquivar."
+                                body={`{
+  "chatId": "5511999999999@c.us"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/chat/read"
+                                title="Marcar chat como lido/não lido"
+                                description="Marca como lido. Use /chat/unread para marcar como não lido."
+                                body={`{
+  "chatId": "5511999999999@c.us"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/chat/mute"
+                                title="Silenciar chat"
+                                description="Silencia notificações de um chat."
+                                body={`{
+  "chatId": "5511999999999@c.us",
+  "duration": "8h" // 8h, 1w, forever
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/chat/pin"
+                                title="Fixar/desafixar chat"
+                                description="Fixa um chat no topo. Use /chat/unpin para desafixar."
+                                body={`{
+  "chatId": "5511999999999@c.us"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/chats/search"
+                                title="Busca chats com filtros"
+                                description="Busca e filtra chats."
+                                body={`{
+  "page": 1,
+  "limit": 10,
+  "filter": "all" // all, unread, groups, contacts, archived
+}`}
+                            />
+                        </div>
+                    )}
+
+                    {activeSection === 'labels' && (
+                        <div className="space-y-6 animate-fade-in">
+                             <EndpointCard
+                                method="POST"
+                                path="/labels/chat"
+                                title="Gerencia labels de um chat"
+                                description="Adiciona ou remove uma etiqueta de um chat."
+                                body={`{
+  "chatId": "5511999999999@c.us",
+  "labelId": "72",
+  "action": "add" // add, remove
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/labels/edit"
+                                title="Editar etiqueta"
+                                description="Edita propriedades de uma etiqueta."
+                                body={`{
+  "labelId": "72",
+  "name": "Novo Nome",
+  "color": "#ff0000"
+}`}
+                            />
+                            <EndpointCard
+                                method="GET"
+                                path="/labels"
+                                title="Buscar todas as etiquetas"
+                                description="Retorna todas as etiquetas disponíveis."
                             />
                         </div>
                     )}

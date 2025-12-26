@@ -18,6 +18,7 @@ import { messagesRoutes } from './modules/messages/messages.routes.js';
 import { contactsRoutes } from './modules/contacts/contacts.routes.js';
 import { groupsRoutes } from './modules/groups/groups.routes.js';
 import { chatsRoutes } from './modules/chats/chats.routes.js';
+import { labelsRoutes } from './modules/labels/labels.routes.js';
 import { profileRoutes } from './modules/profile/profile.routes.js';
 import { campaignsRoutes, startCampaignWorker } from './modules/campaigns/campaigns.routes.js';
 import { webhooksRoutes, setupWebhookListeners } from './modules/webhooks/webhooks.routes.js';
@@ -104,6 +105,9 @@ app.route('/groups', groupsRoutes);
 // Chats routes (via instance token)
 app.route('/chat', chatsRoutes);
 app.route('/chats', chatsRoutes);
+
+// Labels routes (via instance token)
+app.route('/labels', labelsRoutes);
 
 // Profile routes (via instance token)
 app.route('/profile', profileRoutes);

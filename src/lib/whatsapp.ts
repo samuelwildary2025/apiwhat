@@ -623,6 +623,14 @@ class WhatsAppManager extends EventEmitter {
         await chat.sendSeen();
     }
 
+    async markChatAsUnread(instanceId: string, chatId: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chat = await client.getChatById(this.formatNumber(chatId));
+        await chat.markUnread();
+    }
+
     async deleteChat(instanceId: string, chatId: string) {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
@@ -808,6 +816,64 @@ class WhatsAppManager extends EventEmitter {
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
         await client.setStatus(status);
+    }
+
+    // ================================
+    // Label Methods
+    // ================================
+
+    async getLabels(instanceId: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+        
+        if (!client.getLabels) throw new Error('Labels not supported by this instance version');
+        
+        const labels = await client.getLabels();
+        return labels.map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            hexColor: l.hexColor,
+            count: l.count
+        }));
+    }
+
+    async getChatLabels(instanceId: string, chatId: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chat = await client.getChatById(this.formatNumber(chatId));
+        if (!chat.getLabels) return [];
+        
+        const labels = await chat.getLabels();
+        return labels.map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            hexColor: l.hexColor
+        }));
+    }
+
+    async addLabelToChat(instanceId: string, chatId: string, labelId: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chat = await client.getChatById(this.formatNumber(chatId));
+        if (!chat.changeLabels) throw new Error('Label management not supported on this chat');
+        
+        let currentLabels = (await chat.getLabels() || []).map((l: any) => l.id);
+        if (!currentLabels.includes(labelId)) {
+            await chat.changeLabels([...currentLabels, labelId]);
+        }
+    }
+
+    async removeLabelFromChat(instanceId: string, chatId: string, labelId: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chat = await client.getChatById(this.formatNumber(chatId));
+        if (!chat.changeLabels) throw new Error('Label management not supported on this chat');
+        
+        let currentLabels = (await chat.getLabels() || []).map((l: any) => l.id);
+        await chat.changeLabels(currentLabels.filter((id: string) => id !== labelId));
     }
 
     // ================================
