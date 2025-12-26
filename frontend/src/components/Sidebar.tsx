@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import {
-    MessageSquare,
-    BarChart3,
+    LayoutDashboard,
     Smartphone,
     Megaphone,
     Settings,
-    Users,
     LogOut,
+    User,
+    ChevronRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -24,84 +24,77 @@ export function Sidebar() {
         router.push('/');
     };
 
-    const isActive = (path: string) => pathname === path;
+    const isActive = (path: string) => {
+        if (path === '/dashboard' && pathname === '/dashboard') return true;
+        if (path !== '/dashboard' && pathname.startsWith(path)) return true;
+        return false;
+    };
+
+    const menuItems = [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+        { icon: Smartphone, label: 'Instâncias', path: '/dashboard/instances' },
+        { icon: Megaphone, label: 'Campanhas', path: '/dashboard/campaigns' },
+        { icon: Settings, label: 'Configurações', path: '/dashboard/settings' },
+    ];
 
     return (
-        <aside className="w-64 border-r border-[var(--border)] p-4 flex flex-col h-screen sticky top-0">
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                    <MessageSquare className="w-5 h-5 text-black" />
-                </div>
-                <div>
-                    <h1 className="font-bold">WhatsApp API</h1>
-                    <p className="text-xs text-[var(--muted)]">Painel Admin</p>
+        <aside className="w-72 border-r border-[var(--border)] bg-[var(--card)] flex flex-col h-screen sticky top-0 transition-all duration-300">
+            {/* Logo Area */}
+            <div className="p-6 border-b border-[var(--border)]">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center shadow-lg shadow-green-900/20">
+                        <Smartphone className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-lg tracking-tight">WhatsApp API</h1>
+                        <p className="text-xs text-[var(--muted-foreground)] font-medium">Painel Administrativo</p>
+                    </div>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-1">
-                <Link
-                    href="/dashboard"
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive('/dashboard')
-                            ? 'bg-[var(--card)] text-[var(--primary)]'
-                            : 'hover:bg-[var(--card)]'
-                    }`}
-                >
-                    <BarChart3 className="w-5 h-5" />
-                    Dashboard
-                </Link>
-                <Link
-                    href="/dashboard/instances"
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive('/dashboard/instances')
-                            ? 'bg-[var(--card)] text-[var(--primary)]'
-                            : 'hover:bg-[var(--card)]'
-                    }`}
-                >
-                    <Smartphone className="w-5 h-5" />
-                    Instâncias
-                </Link>
-                <Link
-                    href="/dashboard/campaigns"
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive('/dashboard/campaigns')
-                            ? 'bg-[var(--card)] text-[var(--primary)]'
-                            : 'hover:bg-[var(--card)]'
-                    }`}
-                >
-                    <Megaphone className="w-5 h-5" />
-                    Campanhas
-                </Link>
-                <Link
-                    href="/dashboard/settings"
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive('/dashboard/settings')
-                            ? 'bg-[var(--card)] text-[var(--primary)]'
-                            : 'hover:bg-[var(--card)]'
-                    }`}
-                >
-                    <Settings className="w-5 h-5" />
-                    Configurações
-                </Link>
+            {/* Navigation */}
+            <nav className="flex-1 px-4 py-6 space-y-1">
+                {menuItems.map((item) => (
+                    <Link
+                        key={item.path}
+                        href={item.path}
+                        className={`group flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                            isActive(item.path)
+                                ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-medium'
+                                : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
+                        }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)] group-hover:text-[var(--foreground)]'}`} />
+                            <span>{item.label}</span>
+                        </div>
+                        {isActive(item.path) && <ChevronRight className="w-4 h-4 opacity-50" />}
+                    </Link>
+                ))}
             </nav>
 
-            <div className="border-t border-[var(--border)] pt-4">
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--card)] flex items-center justify-center">
-                        <Users className="w-5 h-5" />
+            {/* User Profile Footer */}
+            <div className="p-4 border-t border-[var(--border)] bg-[var(--background)]/50">
+                <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--accent)] transition-colors cursor-pointer group">
+                    <div className="w-10 h-10 rounded-full bg-[var(--secondary)] flex items-center justify-center border border-[var(--border)]">
+                        <User className="w-5 h-5 text-[var(--muted-foreground)]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{user?.name || user?.email}</p>
-                        <p className="text-xs text-[var(--muted)]">{user?.role}</p>
+                        <p className="font-medium text-sm truncate text-[var(--foreground)]">
+                            {user?.name || 'Administrador'}
+                        </p>
+                        <p className="text-xs text-[var(--muted-foreground)] truncate">
+                            {user?.email}
+                        </p>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        className="p-2 rounded-md text-[var(--muted-foreground)] hover:text-[var(--destructive)] hover:bg-[var(--destructive)]/10 transition-colors"
+                        title="Sair"
+                    >
+                        <LogOut className="w-4 h-4" />
+                    </button>
                 </div>
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--danger)] transition-colors w-full px-3 py-2"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Sair
-                </button>
             </div>
         </aside>
     );
