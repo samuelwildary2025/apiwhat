@@ -27,62 +27,53 @@ const loginSchema = z.object({
 // ================================
 
 /**
- * POST /auth/register
- * Register a new user
- */
-auth.post('/register', async (c) => {
-    const body = await c.req.json();
-    const data = registerSchema.parse(body);
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-        where: { email: data.email },
-    });
-
-    if (existingUser) {
-        throw new HTTPException(400, { message: 'Email already registered' });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    // Create user
-    const user = await prisma.user.create({
-        data: {
-            email: data.email,
-            password: hashedPassword,
-            name: data.name,
-        },
-    });
-
-    // Generate token
-    const token = await generateToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-    });
-
-    return c.json({
-        success: true,
-        data: {
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-            },
-            token,
-        },
-    });
-});
-
-/**
  * POST /auth/login
  * Login and get JWT token
  */
 auth.post('/login', async (c) => {
     const body = await c.req.json();
     const data = loginSchema.parse(body);
+
+    // Check for Env Admin Login
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+        if (data.email === process.env.ADMIN_EMAIL && data.password === process.env.ADMIN_PASSWORD) {
+            // Check if admin user exists in DB, if not create it
+            let adminUser = await prisma.user.findUnique({
+                where: { email: process.env.ADMIN_EMAIL }
+            });
+
+            if (!adminUser) {
+                const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+                adminUser = await prisma.user.create({
+                    data: {
+                        email: process.env.ADMIN_EMAIL,
+                        password: hashedPassword,
+                        name: 'Admin System',
+                        role: 'ADMIN',
+                    }
+                });
+            }
+
+            const token = await generateToken({
+                userId: adminUser.id,
+                email: adminUser.email,
+                role: adminUser.role,
+            });
+
+            return c.json({
+                success: true,
+                data: {
+                    user: {
+                        id: adminUser.id,
+                        email: adminUser.email,
+                        name: adminUser.name,
+                        role: adminUser.role,
+                    },
+                    token,
+                },
+            });
+        }
+    }
 
     // Find user
     const user = await prisma.user.findUnique({
