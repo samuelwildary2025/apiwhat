@@ -136,7 +136,7 @@ export default function SettingsPage() {
                             <EndpointCard
                                 method="POST"
                                 path="/message/text"
-                                title="Enviar Texto"
+                                title="Enviar mensagem de texto"
                                 description="Envia uma mensagem de texto simples."
                                 body={`{
   "to": "5511999999999",
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                             <EndpointCard
                                 method="POST"
                                 path="/message/media"
-                                title="Enviar Mídia"
+                                title="Enviar mídia"
                                 description="Envia imagem, vídeo, áudio ou documento."
                                 body={`{
   "to": "5511999999999",
@@ -156,14 +156,47 @@ export default function SettingsPage() {
                             />
                             <EndpointCard
                                 method="POST"
+                                path="/message/contact"
+                                title="Enviar cartão de contato"
+                                description="Envia um contato (vCard) para o chat."
+                                body={`{
+  "to": "5511999999999",
+  "contactId": "5511888888888@c.us"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
                                 path="/message/location"
-                                title="Enviar Localização"
-                                description="Envia uma localização geográfica."
+                                title="Enviar localização geográfica"
+                                description="Envia uma localização com latitude e longitude."
                                 body={`{
   "to": "5511999999999",
   "latitude": -23.550520,
   "longitude": -46.633308,
   "description": "São Paulo, SP"
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/message/presence"
+                                title="Enviar atualização de presença"
+                                description="Simula ações como 'Digitando...' ou 'Gravando áudio'."
+                                body={`{
+  "to": "5511999999999",
+  "presence": "composing" 
+  // composing, recording, available, unavailable
+}`}
+                            />
+                            <EndpointCard
+                                method="POST"
+                                path="/message/poll"
+                                title="Enviar enquete (Poll)"
+                                description="Cria uma enquete com múltiplas opções."
+                                body={`{
+  "to": "5511999999999",
+  "title": "Qual sua cor favorita?",
+  "options": ["Azul", "Vermelho", "Verde"],
+  "allowMultipleAnswers": true
 }`}
                             />
                         </div>
@@ -174,7 +207,7 @@ export default function SettingsPage() {
                              <EndpointCard
                                 method="POST"
                                 path="/message/react"
-                                title="Reagir a Mensagem"
+                                title="Enviar reação a uma mensagem"
                                 description="Envia uma reação (emoji) para uma mensagem específica."
                                 body={`{
   "messageId": "ID_DA_MENSAGEM",
@@ -183,11 +216,41 @@ export default function SettingsPage() {
                             />
                              <EndpointCard
                                 method="POST"
+                                path="/message/edit"
+                                title="Editar uma mensagem enviada"
+                                description="Edita o conteúdo de uma mensagem de texto enviada anteriormente."
+                                body={`{
+  "messageId": "ID_DA_MENSAGEM",
+  "newText": "Texto corrigido"
+}`}
+                            />
+                             <EndpointCard
+                                method="POST"
                                 path="/message/read"
-                                title="Marcar como Lido"
+                                title="Marcar mensagens como lidas"
                                 description="Marca um chat como lido."
                                 body={`{
   "chatId": "5511999999999@s.whatsapp.net"
+}`}
+                            />
+                             <EndpointCard
+                                method="POST"
+                                path="/message/delete"
+                                title="Apagar Mensagem Para Todos"
+                                description="Deleta uma mensagem para todos no chat."
+                                body={`{
+  "messageId": "ID_DA_MENSAGEM",
+  "forEveryone": true
+}`}
+                            />
+                             <EndpointCard
+                                method="POST"
+                                path="/message/search"
+                                title="Buscar mensagens em um chat"
+                                description="Busca histórico de mensagens de um chat."
+                                body={`{
+  "chatId": "5511999999999@s.whatsapp.net",
+  "limit": 50
 }`}
                             />
                         </div>
