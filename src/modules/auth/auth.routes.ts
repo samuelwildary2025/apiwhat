@@ -69,40 +69,7 @@ auth.post('/login', async (c) => {
         }
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-        where: { email: data.email },
-    });
-
-    if (!user) {
-        throw new HTTPException(401, { message: 'Invalid credentials' });
-    }
-
-    // Verify password
-    const validPassword = await bcrypt.compare(data.password, user.password);
-    if (!validPassword) {
-        throw new HTTPException(401, { message: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = await generateToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-    });
-
-    return c.json({
-        success: true,
-        data: {
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-            },
-            token,
-        },
-    });
+    throw new HTTPException(401, { message: 'Invalid credentials' });
 });
 
 /**
