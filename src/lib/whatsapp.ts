@@ -383,6 +383,53 @@ class WhatsAppManager extends EventEmitter {
         return this.formatMessage(result);
     }
 
+    async sendPresence(instanceId: string, to: string, presence: 'unavailable' | 'available' | 'composing' | 'recording' | 'paused') {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chatId = this.formatNumber(to);
+        
+        switch (presence) {
+            case 'unavailable':
+                await client.sendPresenceUnavailable();
+                break;
+            case 'available':
+                await client.sendPresenceAvailable();
+                break;
+            case 'composing':
+                await (await client.getChatById(chatId)).sendStateTyping();
+                break;
+            case 'recording':
+                await (await client.getChatById(chatId)).sendStateRecording();
+                break;
+            case 'paused':
+                await (await client.getChatById(chatId)).clearState();
+                break;
+        }
+    }
+
+    async sendPoll(instanceId: string, to: string, title: string, options: string[], pollOptions?: { allowMultipleAnswers?: boolean }) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const chatId = this.formatNumber(to);
+        const poll = new (pkg as any).Poll(title, options, pollOptions);
+
+        const result = await client.sendMessage(chatId, poll);
+        return this.formatMessage(result);
+    }
+
+    async editMessage(instanceId: string, messageId: string, newText: string) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        const msg = await client.getMessageById(messageId);
+        if (!msg) throw new Error('Message not found');
+
+        const result = await msg.edit(newText);
+        return result;
+    }
+
     async reactToMessage(instanceId: string, messageId: string, reaction: string) {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);

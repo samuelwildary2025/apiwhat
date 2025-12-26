@@ -42,6 +42,18 @@ const contactMessageSchema = z.object({
     contactId: z.string().min(1),
 });
 
+const presenceSchema = z.object({
+    to: z.string().min(1),
+    presence: z.enum(['unavailable', 'available', 'composing', 'recording', 'paused']),
+});
+
+const pollSchema = z.object({
+    to: z.string().min(1),
+    title: z.string().min(1),
+    options: z.array(z.string().min(1)).min(2).max(12),
+    allowMultipleAnswers: z.boolean().default(false),
+});
+
 const reactionSchema = z.object({
     messageId: z.string().min(1),
     reaction: z.string().min(1),
@@ -50,6 +62,11 @@ const reactionSchema = z.object({
 const deleteMessageSchema = z.object({
     messageId: z.string().min(1),
     forEveryone: z.boolean().default(true),
+});
+
+const editMessageSchema = z.object({
+    messageId: z.string().min(1),
+    newText: z.string().min(1),
 });
 
 const searchMessagesSchema = z.object({
@@ -175,6 +192,81 @@ messages.post('/contact', async (c) => {
     } catch (error) {
         throw new HTTPException(500, {
             message: error instanceof Error ? error.message : 'Failed to send contact',
+        });
+    }
+});
+
+/**
+ * POST /message/presence
+ * Send presence update (typing, recording, etc)
+ */
+messages.post('/presence', async (c) => {
+    const instanceId = c.get('instanceId');
+    const body = await c.req.json();
+    const data = presenceSchema.parse(body);
+
+    try {
+        await waManager.sendPresence(instanceId, data.to, data.presence);
+
+        return c.json({
+            success: true,
+            message: `Presence set to ${data.presence}`,
+        });
+    } catch (error) {
+        throw new HTTPException(500, {
+            message: error instanceof Error ? error.message : 'Failed to set presence',
+        });
+    }
+});
+
+/**
+ * POST /message/poll
+ * Send a poll
+ */
+messages.post('/poll', async (c) => {
+    const instanceId = c.get('instanceId');
+    const body = await c.req.json();
+    const data = pollSchema.parse(body);
+
+    try {
+        const result = await waManager.sendPoll(
+            instanceId,
+            data.to,
+            data.title,
+            data.options,
+            { allowMultipleAnswers: data.allowMultipleAnswers }
+        );
+
+        return c.json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        throw new HTTPException(500, {
+            message: error instanceof Error ? error.message : 'Failed to send poll',
+        });
+    }
+});
+
+/**
+ * POST /message/edit
+ * Edit a message
+ */
+messages.post('/edit', async (c) => {
+    const instanceId = c.get('instanceId');
+    const body = await c.req.json();
+    const data = editMessageSchema.parse(body);
+
+    try {
+        const result = await waManager.editMessage(instanceId, data.messageId, data.newText);
+
+        return c.json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        throw new HTTPException(500, {
+            message: error instanceof Error ? error.message : 'Failed to edit message',
         });
     }
 });
