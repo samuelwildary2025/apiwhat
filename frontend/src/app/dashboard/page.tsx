@@ -353,11 +353,11 @@ export default function DashboardPage() {
                                     </div>
 
                                     {instance.qrCode && instance.status !== 'connected' && (
-                                        <div className="mt-4 p-4 bg-white rounded-lg">
+                                        <div className="mt-4 p-4 bg-white rounded-lg flex justify-center items-center overflow-hidden">
                                             <img
                                                 src={instance.qrCode}
                                                 alt="QR Code"
-                                                className="w-full"
+                                                className="w-full max-w-[200px] h-auto object-contain"
                                             />
                                         </div>
                                     )}
