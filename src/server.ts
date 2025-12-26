@@ -117,6 +117,15 @@ app.route('/webhook', webhooksRoutes);
 app.route('/sse', webhooksRoutes);
 
 // ================================
+// Static Files (Frontend)
+// ================================
+
+app.use('/*', serveStatic({ root: './public' }));
+
+// SPA Fallback
+app.get('*', serveStatic({ path: './public/index.html' }));
+
+// ================================
 // 404 Handler
 // ================================
 
