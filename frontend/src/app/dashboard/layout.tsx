@@ -40,9 +40,9 @@ export default function DashboardLayout({
     if (!user) return null;
 
     return (
-        <div className="min-h-screen flex bg-[#0a0a0a]">
+        <div className="min-h-screen flex bg-[#09090b]">
             <Sidebar />
-            <main className="flex-1 overflow-auto h-screen">
+            <main className="flex-1 overflow-auto h-screen bg-[#09090b]">
                 {children}
             </main>
         </div>
