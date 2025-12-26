@@ -69,6 +69,16 @@ class WhatsAppManager extends EventEmitter {
                     '--no-first-run',
                     '--no-zygote',
                     '--disable-gpu',
+                    '--disable-extensions', // Disable extensions to prevent potential conflicts
+                    '--disable-background-networking', // Disable various background network services
+                    '--disable-default-apps', // Disable installation of default apps on first run
+                    '--disable-sync', // Disable syncing to a Google account
+                    '--disable-translate', // Disable built-in translation
+                    '--hide-scrollbars', // Hide scrollbars
+                    '--metrics-recording-only', // Run in metrics recording mode only
+                    '--mute-audio', // Mute audio
+                    '--no-default-browser-check', // Disable the default browser check
+                    '--start-maximized', // Start maximized
                 ],
             },
         });
