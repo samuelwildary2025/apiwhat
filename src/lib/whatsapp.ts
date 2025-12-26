@@ -68,6 +68,7 @@ class WhatsAppManager extends EventEmitter {
                     '--disable-accelerated-2d-canvas',
                     '--no-first-run',
                     '--no-zygote',
+                    '--single-process', // Required for some Docker environments
                     '--disable-gpu',
                 ],
             },
