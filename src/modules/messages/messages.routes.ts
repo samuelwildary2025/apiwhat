@@ -74,6 +74,16 @@ const searchMessagesSchema = z.object({
     limit: z.number().min(1).max(500).default(50),
 });
 
+const downloadMediaSchema = z.object({
+    id: z.string().min(1),
+    return_base64: z.boolean().default(false),
+    generate_mp3: z.boolean().default(true),
+    return_link: z.boolean().default(true),
+    transcribe: z.boolean().default(false),
+    openai_apikey: z.string().optional(),
+    download_quoted: z.boolean().default(false),
+});
+
 // ================================
 // Send Message Routes
 // ================================
@@ -267,6 +277,40 @@ messages.post('/edit', async (c) => {
     } catch (error) {
         throw new HTTPException(500, {
             message: error instanceof Error ? error.message : 'Failed to edit message',
+        });
+    }
+});
+
+/**
+ * POST /message/download
+ * Download message file
+ */
+messages.post('/download', async (c) => {
+    const instanceId = c.get('instanceId');
+    const body = await c.req.json();
+    const data = downloadMediaSchema.parse(body);
+
+    try {
+        const result = await waManager.downloadMedia(
+            instanceId, 
+            data.id, 
+            {
+                returnBase64: data.return_base64,
+                generateMp3: data.generate_mp3,
+                returnLink: data.return_link,
+                transcribe: data.transcribe,
+                openaiKey: data.openai_apikey,
+                downloadQuoted: data.download_quoted
+            }
+        );
+
+        return c.json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        throw new HTTPException(500, {
+            message: error instanceof Error ? error.message : 'Failed to download media',
         });
     }
 });

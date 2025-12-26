@@ -206,6 +206,21 @@ export default function SettingsPage() {
 
                     {activeSection === 'actions' && (
                         <div className="space-y-6 animate-fade-in">
+                            <EndpointCard
+                                method="POST"
+                                path="/message/download"
+                                title="Baixar arquivo de uma mensagem"
+                                description="Baixa o arquivo associado a uma mensagem de mídia."
+                                body={`{
+  "id": "7E8F0D17244B421048F0763C8638760",
+  "return_base64": false,
+  "generate_mp3": false,
+  "return_link": false,
+  "transcribe": false,
+  "openai_apikey": "sk-...",
+  "download_quoted": false
+}`}
+                            />
                              <EndpointCard
                                 method="POST"
                                 path="/message/react"

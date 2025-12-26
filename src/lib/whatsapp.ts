@@ -454,6 +454,75 @@ class WhatsAppManager extends EventEmitter {
         }
     }
 
+    async downloadMedia(
+        instanceId: string, 
+        messageId: string, 
+        options: {
+            returnBase64?: boolean;
+            generateMp3?: boolean;
+            returnLink?: boolean;
+            transcribe?: boolean;
+            openaiKey?: string;
+            downloadQuoted?: boolean;
+        }
+    ) {
+        const client = this.getClient(instanceId);
+        if (!client) throw new Error(`Instance ${instanceId} not connected`);
+
+        let msg = await client.getMessageById(messageId);
+        if (!msg) throw new Error('Message not found');
+
+        if (options.downloadQuoted && msg.hasQuotedMsg) {
+            msg = await msg.getQuotedMessage();
+        }
+
+        if (!msg.hasMedia) throw new Error('Message does not contain media');
+
+        const media = await msg.downloadMedia();
+        if (!media) throw new Error('Failed to download media');
+
+        const result: any = {
+            mimetype: media.mimetype,
+            filename: media.filename || 'file',
+        };
+
+        if (options.returnBase64) {
+            result.base64 = media.data;
+        }
+
+        if (options.returnLink) {
+            // Ensure public media directory exists
+            const publicMediaDir = path.join(process.cwd(), 'public', 'media');
+            if (!fs.existsSync(publicMediaDir)) {
+                fs.mkdirSync(publicMediaDir, { recursive: true });
+            }
+
+            const extension = media.mimetype.split('/')[1]?.split(';')[0] || 'bin';
+            const filename = `${messageId}_${Date.now()}.${extension}`;
+            const filePath = path.join(publicMediaDir, filename);
+
+            fs.writeFileSync(filePath, media.data, 'base64');
+            
+            // In a real scenario, you'd construct the full URL based on your server config
+            // For now, returning relative path or assuming a base URL if available
+            result.link = `/media/${filename}`;
+        }
+
+        // Placeholder for MP3 conversion and Transcription
+        // These require external libraries (ffmpeg, openai) which might not be installed
+        if (options.generateMp3 && media.mimetype.includes('audio')) {
+            // Logic to convert to MP3 would go here
+            // result.mp3Link = ...
+        }
+
+        if (options.transcribe && media.mimetype.includes('audio')) {
+            // Logic to transcribe audio would go here
+            // result.transcription = ...
+        }
+
+        return result;
+    }
+
     // ================================
     // Contact Methods
     // ================================
