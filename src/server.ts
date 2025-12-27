@@ -22,6 +22,7 @@ import { labelsRoutes } from './modules/labels/labels.routes.js';
 import { profileRoutes } from './modules/profile/profile.routes.js';
 import { campaignsRoutes, startCampaignWorker } from './modules/campaigns/campaigns.routes.js';
 import { webhooksRoutes, setupWebhookListeners } from './modules/webhooks/webhooks.routes.js';
+import { waManager } from './lib/whatsapp.js';
 
 // Create Hono app
 const app = new Hono();
@@ -175,6 +176,9 @@ async function main() {
 
         // Start campaign worker
         startCampaignWorker();
+
+        // Restore WhatsApp sessions
+        await waManager.reconnectAll();
 
         // Start server
         serve({

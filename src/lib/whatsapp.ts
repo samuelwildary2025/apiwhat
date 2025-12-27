@@ -981,6 +981,37 @@ class WhatsAppManager extends EventEmitter {
     // Utility Methods
     // ================================
 
+    async reconnectAll() {
+        try {
+            logger.info('Restoring sessions...');
+            const instances = await prisma.instance.findMany({
+                where: { status: 'CONNECTED' }
+            });
+
+            for (const instance of instances) {
+                try {
+                    logger.info({ instanceId: instance.id }, 'Restoring session');
+                    await this.createInstance(instance.id);
+                    // We don't call initialize() immediately here to avoid blocking startup, 
+                    // or we can depending on preference. Usually better to init.
+                    const client = this.instances.get(instance.id)?.client;
+                    if (client) {
+                        client.initialize().catch((err: any) => {
+                            logger.error({ instanceId: instance.id, err }, 'Failed to restore session');
+                            this.updateInstanceStatus(instance.id, 'DISCONNECTED');
+                        });
+                    }
+                } catch (error) {
+                    logger.error({ instanceId: instance.id, error }, 'Failed to restore instance');
+                    await this.updateInstanceStatus(instance.id, 'DISCONNECTED');
+                }
+            }
+            logger.info(`Restored ${instances.length} sessions`);
+        } catch (error) {
+            logger.error({ error }, 'Failed to restore sessions');
+        }
+    }
+
     private formatNumber(number: string): string {
         // Remove all non-numeric characters
         let cleaned = number.replace(/\D/g, '');
