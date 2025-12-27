@@ -331,6 +331,28 @@ class WhatsAppManager extends EventEmitter {
     }
 
     // ================================
+    // Helper to resolve chatId with LID workaround
+    // ================================
+
+    private async resolveChatId(client: any, number: string): Promise<string> {
+        const cleanedNumber = number.replace(/\D/g, '');
+
+        // Check if it's a group ID
+        if (cleanedNumber.includes('-')) {
+            return `${cleanedNumber}@g.us`;
+        }
+
+        // Use getNumberId to get the correct WhatsApp ID (with LID)
+        const numberId = await client.getNumberId(cleanedNumber);
+
+        if (!numberId) {
+            throw new Error(`Number ${number} is not registered on WhatsApp`);
+        }
+
+        return numberId._serialized;
+    }
+
+    // ================================
     // Message Methods
     // ================================
 
@@ -372,7 +394,7 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
+        const chatId = await this.resolveChatId(client, to);
         const media = await MessageMedia.fromUrl(mediaUrl);
 
         const result = await client.sendMessage(chatId, media, {
@@ -392,7 +414,7 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
+        const chatId = await this.resolveChatId(client, to);
         const media = new MessageMedia(mimetype, base64, options?.filename);
 
         const result = await client.sendMessage(chatId, media, {
@@ -406,7 +428,7 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
+        const chatId = await this.resolveChatId(client, to);
         const location = new Location(latitude, longitude, { name: description });
 
         const result = await client.sendMessage(chatId, location);
@@ -417,8 +439,8 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
-        const contact = await client.getContactById(this.formatNumber(contactId));
+        const chatId = await this.resolveChatId(client, to);
+        const contact = await client.getContactById(await this.resolveChatId(client, contactId));
 
         const result = await client.sendMessage(chatId, contact);
         return this.formatMessage(result);
@@ -428,7 +450,7 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
+        const chatId = await this.resolveChatId(client, to);
 
         switch (presence) {
             case 'unavailable':
@@ -453,7 +475,7 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
+        const chatId = await this.resolveChatId(client, to);
         const poll = new (pkg as any).Poll(title, options, pollOptions);
 
         const result = await client.sendMessage(chatId, poll);
