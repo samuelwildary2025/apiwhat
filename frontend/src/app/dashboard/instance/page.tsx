@@ -285,7 +285,8 @@ function InstanceDetailContent() {
 
         setSending(true);
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sistema-agente-aimerc.5mos1l.easypanel.host';
+            // Use relative URL since frontend is served from same domain as API
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
             const headers = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${instance?.token || ''}`,
