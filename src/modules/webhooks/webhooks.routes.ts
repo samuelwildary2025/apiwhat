@@ -68,6 +68,8 @@ async function dispatchWebhook(instanceId: string, event: string, data: any): Pr
         data,
     };
 
+    logger.info({ instanceId, event }, 'Dispatching webhook');
+
     // Get instance webhook config
     const instance = await prisma.instance.findUnique({
         where: { id: instanceId },
@@ -76,6 +78,12 @@ async function dispatchWebhook(instanceId: string, event: string, data: any): Pr
             webhookEvents: true,
         },
     });
+
+    logger.info({
+        instanceId,
+        webhookUrl: instance?.webhookUrl,
+        webhookEvents: instance?.webhookEvents
+    }, 'Instance webhook config');
 
     // Get global webhook config
     const globalSettings = await prisma.globalSettings.findUnique({
@@ -86,8 +94,13 @@ async function dispatchWebhook(instanceId: string, event: string, data: any): Pr
     if (instance?.webhookUrl) {
         const events = instance.webhookEvents;
         if (events.length === 0 || events.includes(event) || events.includes('*')) {
+            logger.info({ url: instance.webhookUrl, event }, 'Sending webhook to instance URL');
             sendWebhookWithRetry(instance.webhookUrl, payload);
+        } else {
+            logger.info({ event, configuredEvents: events }, 'Event not in configured events');
         }
+    } else {
+        logger.info({ instanceId }, 'No webhook URL configured for instance');
     }
 
     // Send to global webhook if configured
