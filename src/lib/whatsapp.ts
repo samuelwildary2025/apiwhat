@@ -338,23 +338,27 @@ class WhatsAppManager extends EventEmitter {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
-        const chatId = this.formatNumber(to);
-
-        // Note: isRegisteredUser check removed due to "No LID for user" bug in whatsapp-web.js
-        // The sendMessage call will fail naturally if the number is not registered
+        // Clean the number first
+        let cleanedNumber = to.replace(/\D/g, '');
 
         try {
+            // WORKAROUND FOR LID ERROR:
+            // Use getNumberId to get the correct WhatsApp ID (with LID) before sending
+            const numberId = await client.getNumberId(cleanedNumber);
+
+            if (!numberId) {
+                throw new Error(`Number ${to} is not registered on WhatsApp`);
+            }
+
+            // Use the correct ID returned by getNumberId
+            const chatId = numberId._serialized;
+            logger.info({ instanceId, to, chatId }, 'Sending message with resolved chatId');
+
             const result = await client.sendMessage(chatId, text);
             return this.formatMessage(result);
         } catch (error: any) {
             const errorMessage = error.message || String(error);
-            logger.error({ instanceId, to, chatId, error: errorMessage, stack: error.stack }, 'Error during sendMessage');
-
-            // Handle LID-related errors - these usually require session reset
-            if (errorMessage.includes('LID')) {
-                throw new Error(`LID Error: Session may be corrupted. Please logout and reconnect the instance. Original: ${errorMessage}`);
-            }
-
+            logger.error({ instanceId, to, error: errorMessage }, 'Error during sendMessage');
             throw new Error(`Failed to send message: ${errorMessage}`);
         }
     }
