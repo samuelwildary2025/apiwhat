@@ -11,8 +11,8 @@ RUN npm run build
 # Stage 2: Build Backend
 FROM node:20-alpine AS backend-builder
 WORKDIR /app
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl openssl-dev
+# Install OpenSSL for Prisma and git for GitHub dependencies
+RUN apk add --no-cache openssl openssl-dev git
 COPY package*.json ./
 RUN npm ci
 COPY . .
