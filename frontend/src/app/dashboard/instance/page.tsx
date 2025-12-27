@@ -187,9 +187,10 @@ function InstanceDetailContent() {
 
         setSending(true);
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://sistema-agente-aimerc.5mos1l.easypanel.host';
             const headers = {
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${instance?.token || ''}`,
                 'X-Instance-Token': instance?.token || '',
             };
 
