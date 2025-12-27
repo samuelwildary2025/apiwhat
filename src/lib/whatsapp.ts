@@ -347,12 +347,15 @@ class WhatsAppManager extends EventEmitter {
             const result = await client.sendMessage(chatId, text);
             return this.formatMessage(result);
         } catch (error: any) {
-            // Handle LID-related errors gracefully
-            if (error.message && error.message.includes('LID')) {
-                logger.error({ instanceId, to, error: error.message }, 'LID error during sendMessage');
-                throw new Error(`Failed to send message: WhatsApp internal error. Please try again or verify the number.`);
+            const errorMessage = error.message || String(error);
+            logger.error({ instanceId, to, chatId, error: errorMessage, stack: error.stack }, 'Error during sendMessage');
+
+            // Handle LID-related errors - these usually require session reset
+            if (errorMessage.includes('LID')) {
+                throw new Error(`LID Error: Session may be corrupted. Please logout and reconnect the instance. Original: ${errorMessage}`);
             }
-            throw error;
+
+            throw new Error(`Failed to send message: ${errorMessage}`);
         }
     }
 
