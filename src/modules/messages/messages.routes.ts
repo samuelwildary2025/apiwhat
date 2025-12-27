@@ -17,6 +17,7 @@ const messages = new Hono();
         }
         await next();
         c.header('Access-Control-Allow-Origin', '*');
+        return;
     });
 
 // All message routes use instance token authentication
