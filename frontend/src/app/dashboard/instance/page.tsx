@@ -34,7 +34,9 @@ import {
     Bell,
     Eye,
     History,
-    Users
+    Users,
+    Globe,
+    Save
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -84,6 +86,11 @@ function InstanceDetailContent() {
     });
     const [savingSettings, setSavingSettings] = useState(false);
 
+    // Webhook State
+    const [webhookUrl, setWebhookUrl] = useState('');
+    const [webhookEvents, setWebhookEvents] = useState<string[]>([]);
+    const [savingWebhook, setSavingWebhook] = useState(false);
+
     // Test Form States
     const [messageType, setMessageType] = useState<MessageType>('text');
     const [testTo, setTestTo] = useState('');
@@ -111,6 +118,7 @@ function InstanceDetailContent() {
         if (id) {
             loadInstance();
             loadSettings();
+            loadWebhook();
         }
     }, [id]);
 
@@ -157,6 +165,39 @@ function InstanceDetailContent() {
         } finally {
             setSavingSettings(false);
         }
+    };
+
+    const loadWebhook = async () => {
+        try {
+            const response = await api.getInstance(id);
+            if (response.data) {
+                const data = response.data as any;
+                setWebhookUrl(data.webhookUrl || '');
+                setWebhookEvents(data.webhookEvents || []);
+            }
+        } catch (error) {
+            console.error('Failed to load webhook config', error);
+        }
+    };
+
+    const saveWebhook = async () => {
+        setSavingWebhook(true);
+        try {
+            await api.updateInstanceWebhook(id, webhookUrl || null, webhookEvents);
+            toast.success('Webhook configurado!');
+        } catch (error) {
+            toast.error('Erro ao salvar webhook');
+        } finally {
+            setSavingWebhook(false);
+        }
+    };
+
+    const toggleWebhookEvent = (event: string) => {
+        setWebhookEvents(prev =>
+            prev.includes(event)
+                ? prev.filter(e => e !== event)
+                : [...prev, event]
+        );
     };
 
     const handleConnect = async () => {
@@ -1000,6 +1041,75 @@ function InstanceDetailContent() {
                                     Salvando...
                                 </div>
                             )}
+                        </div>
+
+                        {/* Webhook Configuration Card */}
+                        <div className="card p-6 mt-6">
+                            <h3 className="font-semibold mb-6 flex items-center gap-2">
+                                <Globe className="w-5 h-5 text-[var(--primary)]" />
+                                Webhook (Integração com Agente)
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">URL do Webhook</label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://seu-agente.com/webhook"
+                                        value={webhookUrl}
+                                        onChange={(e) => setWebhookUrl(e.target.value)}
+                                        className="w-full bg-[var(--background)] border border-[var(--border)] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                                    />
+                                    <p className="text-xs text-[var(--muted)] mt-1">
+                                        A API enviará eventos para esta URL via POST
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Eventos</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: 'message', label: 'Mensagens Recebidas' },
+                                            { id: 'message_create', label: 'Mensagens Criadas' },
+                                            { id: 'message_ack', label: 'Confirmação de Leitura' },
+                                            { id: 'call', label: 'Ligações' },
+                                            { id: 'group_join', label: 'Entrada em Grupo' },
+                                            { id: 'group_leave', label: 'Saída de Grupo' },
+                                        ].map((event) => (
+                                            <label
+                                                key={event.id}
+                                                className="flex items-center gap-2 p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={webhookEvents.includes(event.id)}
+                                                    onChange={() => toggleWebhookEvent(event.id)}
+                                                    className="w-4 h-4 rounded border-[var(--border)] text-[var(--primary)]"
+                                                />
+                                                <span className="text-sm">{event.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={saveWebhook}
+                                    disabled={savingWebhook}
+                                    className="btn btn-primary w-full"
+                                >
+                                    {savingWebhook ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4 mr-2" />
+                                            Salvar Webhook
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ) : null}
