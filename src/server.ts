@@ -33,9 +33,17 @@ const app = new Hono();
 
 app.use('*', cors({
     origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Instance-Token', 'X-Admin-Token'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Instance-Token', 'X-Admin-Token', 'Accept', 'Origin', 'X-Requested-With'],
+    exposeHeaders: ['Content-Length', 'X-Request-Id'],
+    maxAge: 86400,
+    credentials: false,
 }));
+
+// Explicit OPTIONS handler for preflight requests
+app.options('*', () => {
+    return new Response(null, { status: 204 });
+});
 
 app.use('*', secureHeaders());
 app.use('*', prettyJSON());
