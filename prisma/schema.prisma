@@ -75,6 +75,13 @@ model Instance {
   // Webhook configuration
   webhookUrl    String?
   webhookEvents String[]       @default([])
+
+  // Proxy Configuration
+  proxyHost     String?
+  proxyPort     String?
+  proxyUsername String?
+  proxyPassword String?
+  proxyProtocol String?        @default("http")
   
   // Owner
   userId        String

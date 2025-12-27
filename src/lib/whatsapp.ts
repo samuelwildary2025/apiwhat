@@ -53,6 +53,45 @@ class WhatsAppManager extends EventEmitter {
 
         const sessionPath = path.join(env.waSessionPath, instanceId);
 
+        // Fetch instance config (Proxy)
+        const instanceConfig = await prisma.instance.findUnique({ where: { id: instanceId } });
+        
+        const puppeteerArgs = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-background-networking',
+            '--disable-default-apps',
+            '--disable-sync',
+            '--disable-translate',
+            '--hide-scrollbars',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--start-maximized',
+        ];
+
+        // Configure Proxy if exists
+        if (instanceConfig?.proxyHost && instanceConfig?.proxyPort) {
+            const protocol = instanceConfig.proxyProtocol || 'http';
+            let proxyUrl = `${protocol}://${instanceConfig.proxyHost}:${instanceConfig.proxyPort}`;
+            
+            // If auth is provided, we try to embed it in the URL (supported by some setups)
+            // Note: Chromium supports auth in proxy-server arg in some versions, or requires separate auth handling.
+            // For standard HTTP proxies, this is the first step.
+            if (instanceConfig.proxyUsername && instanceConfig.proxyPassword) {
+                 proxyUrl = `${protocol}://${instanceConfig.proxyUsername}:${instanceConfig.proxyPassword}@${instanceConfig.proxyHost}:${instanceConfig.proxyPort}`;
+            }
+
+            puppeteerArgs.push(`--proxy-server=${proxyUrl}`);
+            logger.info({ instanceId, proxy: proxyUrl }, 'Using Proxy for instance');
+        }
+
         const client = new Client({
             authStrategy: new LocalAuth({
                 clientId: instanceId,
@@ -61,25 +100,7 @@ class WhatsAppManager extends EventEmitter {
             puppeteer: {
                 headless: true,
                 executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu',
-                    '--disable-extensions', // Disable extensions to prevent potential conflicts
-                    '--disable-background-networking', // Disable various background network services
-                    '--disable-default-apps', // Disable installation of default apps on first run
-                    '--disable-sync', // Disable syncing to a Google account
-                    '--disable-translate', // Disable built-in translation
-                    '--hide-scrollbars', // Hide scrollbars
-                    '--metrics-recording-only', // Run in metrics recording mode only
-                    '--mute-audio', // Mute audio
-                    '--no-default-browser-check', // Disable the default browser check
-                    '--start-maximized', // Start maximized
-                ],
+                args: puppeteerArgs,
             },
         });
 
@@ -318,6 +339,13 @@ class WhatsAppManager extends EventEmitter {
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
         const chatId = this.formatNumber(to);
+        
+        // Verify if number is registered on WhatsApp
+        const isRegistered = await client.isRegisteredUser(chatId);
+        if (!isRegistered) {
+            throw new Error(`Number ${to} is not registered on WhatsApp`);
+        }
+
         const result = await client.sendMessage(chatId, text);
         return this.formatMessage(result);
     }
@@ -511,13 +539,17 @@ class WhatsAppManager extends EventEmitter {
         // Placeholder for MP3 conversion and Transcription
         // These require external libraries (ffmpeg, openai) which might not be installed
         if (options.generateMp3 && media.mimetype.includes('audio')) {
-            // Logic to convert to MP3 would go here
-            // result.mp3Link = ...
+            // Check if ffmpeg is available (placeholder check)
+            // Since we can't easily check or install system deps here, we'll add a warning
+            result.warning = "MP3 conversion requires ffmpeg installed on the server. Returning original audio format.";
         }
 
         if (options.transcribe && media.mimetype.includes('audio')) {
-            // Logic to transcribe audio would go here
-            // result.transcription = ...
+             if (!options.openaiKey) {
+                 result.transcriptionWarning = "OpenAI API Key required for transcription.";
+             } else {
+                 result.transcriptionWarning = "Transcription requires ffmpeg for audio conversion. Skipping.";
+             }
         }
 
         return result;

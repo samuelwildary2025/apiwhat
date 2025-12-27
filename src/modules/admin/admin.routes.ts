@@ -21,6 +21,12 @@ const createInstanceSchema = z.object({
     userId: z.string().uuid().optional(), // If not provided, uses current user
     webhookUrl: z.string().url().optional(),
     webhookEvents: z.array(z.string()).optional(),
+    // Proxy
+    proxyHost: z.string().optional(),
+    proxyPort: z.string().optional(),
+    proxyUsername: z.string().optional(),
+    proxyPassword: z.string().optional(),
+    proxyProtocol: z.enum(['http', 'https', 'socks4', 'socks5']).default('http').optional(),
 });
 
 const updateInstanceSchema = z.object({
@@ -61,6 +67,11 @@ admin.post('/instance', async (c) => {
             userId: data.userId || user.userId,
             webhookUrl: data.webhookUrl,
             webhookEvents: data.webhookEvents || [],
+            proxyHost: data.proxyHost,
+            proxyPort: data.proxyPort,
+            proxyUsername: data.proxyUsername,
+            proxyPassword: data.proxyPassword,
+            proxyProtocol: data.proxyProtocol,
         },
     });
 

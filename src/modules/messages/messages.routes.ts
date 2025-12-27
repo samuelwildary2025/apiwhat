@@ -105,8 +105,12 @@ messages.post('/text', async (c) => {
             data: result,
         });
     } catch (error) {
+        // Enhanced error logging
+        const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+        console.error(`[Message Send Error] Instance: ${instanceId}, To: ${data.to}, Error: ${errorMessage}`);
+        
         throw new HTTPException(500, {
-            message: error instanceof Error ? error.message : 'Failed to send message',
+            message: errorMessage,
         });
     }
 });
