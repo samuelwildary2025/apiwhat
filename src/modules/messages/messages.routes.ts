@@ -7,17 +7,17 @@ import { HTTPException } from 'hono/http-exception';
 const messages = new Hono();
 
 // Add CORS headers for browser fetch requests
-    messages.use('*', async (c, next) => {
-        // Handle preflight requests
-        if (c.req.method === 'OPTIONS') {
+messages.use('*', async (c, next) => {
+    // Handle preflight requests
+    if (c.req.method === 'OPTIONS') {
             c.header('Access-Control-Allow-Origin', '*');
             c.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
             c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Instance-Token');
             return c.text('', 204 as any);
         }
-        await next();
-        c.header('Access-Control-Allow-Origin', '*');
-    });
+    await next();
+    c.header('Access-Control-Allow-Origin', '*');
+});
 
 // All message routes use instance token authentication
 messages.use('*', instanceTokenMiddleware);
