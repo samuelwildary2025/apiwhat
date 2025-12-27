@@ -340,11 +340,20 @@ class WhatsAppManager extends EventEmitter {
 
         const chatId = this.formatNumber(to);
         
-        // Skip registration check for now as it causes issues with some numbers/LID
-        // const isRegistered = await client.isRegisteredUser(chatId);
-        // if (!isRegistered) {
-        //    throw new Error(`Number ${to} is not registered on WhatsApp`);
-        // }
+        // Verify if number is registered on WhatsApp
+        try {
+            const isRegistered = await client.isRegisteredUser(chatId);
+            if (!isRegistered) {
+                throw new Error(`Number ${to} is not registered on WhatsApp`);
+            }
+        } catch (error: any) {
+            // If the check fails (e.g. LID error), we log but try to send anyway
+            // Only rethrow if it's the specific "not registered" error we just threw
+            if (error.message && error.message.includes('not registered on WhatsApp')) {
+                throw error;
+            }
+            logger.warn({ instanceId, error: error.message }, 'Failed to verify number registration, attempting to send anyway');
+        }
 
         const result = await client.sendMessage(chatId, text);
         return this.formatMessage(result);
