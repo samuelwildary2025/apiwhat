@@ -27,7 +27,14 @@ import {
     Image as ImageIcon,
     Trash2,
     Plus,
-    X
+    X,
+    ToggleLeft,
+    ToggleRight,
+    Phone,
+    Bell,
+    Eye,
+    History,
+    Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -46,6 +53,14 @@ interface Instance {
     updatedAt: string;
 }
 
+interface InstanceSettings {
+    alwaysOnline: boolean;
+    ignoreGroups: boolean;
+    rejectCalls: boolean;
+    readMessages: boolean;
+    syncFullHistory: boolean;
+}
+
 type MessageType = 'text' | 'media' | 'poll' | 'location' | 'presence' | 'edit' | 'react' | 'delete';
 
 function InstanceDetailContent() {
@@ -57,7 +72,17 @@ function InstanceDetailContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [connecting, setConnecting] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'test'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'test' | 'settings'>('overview');
+
+    // Settings State
+    const [settings, setSettings] = useState<InstanceSettings>({
+        alwaysOnline: false,
+        ignoreGroups: false,
+        rejectCalls: false,
+        readMessages: false,
+        syncFullHistory: false,
+    });
+    const [savingSettings, setSavingSettings] = useState(false);
 
     // Test Form States
     const [messageType, setMessageType] = useState<MessageType>('text');
@@ -85,6 +110,7 @@ function InstanceDetailContent() {
     useEffect(() => {
         if (id) {
             loadInstance();
+            loadSettings();
         }
     }, [id]);
 
@@ -99,6 +125,37 @@ function InstanceDetailContent() {
             router.push('/dashboard');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const loadSettings = async () => {
+        try {
+            const response = await api.getInstanceSettings(id);
+            if (response.data) {
+                setSettings(response.data as InstanceSettings);
+            }
+        } catch (error) {
+            console.error('Failed to load settings', error);
+        }
+    };
+
+    const toggleSetting = async (key: keyof InstanceSettings) => {
+        const newValue = !settings[key];
+        const previousSettings = { ...settings };
+
+        // Optimistic update
+        setSettings(prev => ({ ...prev, [key]: newValue }));
+        setSavingSettings(true);
+
+        try {
+            await api.updateInstanceSettings(id, { [key]: newValue });
+            toast.success('Configuração atualizada');
+        } catch (error) {
+            // Rollback on error
+            setSettings(previousSettings);
+            toast.error('Erro ao atualizar configuração');
+        } finally {
+            setSavingSettings(false);
         }
     };
 
@@ -212,21 +269,21 @@ function InstanceDetailContent() {
                     endpoint = '/message/poll';
                     const validOptions = pollOptions.filter(o => o.trim().length > 0);
                     if (validOptions.length < 2) throw new Error('Mínimo de 2 opções');
-                    body = { 
-                        to: testTo, 
-                        title: pollTitle, 
+                    body = {
+                        to: testTo,
+                        title: pollTitle,
                         options: validOptions,
-                        allowMultipleAnswers 
+                        allowMultipleAnswers
                     };
                     if (!pollTitle) throw new Error('Digite o título da enquete');
                     break;
                 case 'location':
                     endpoint = '/message/location';
-                    body = { 
-                        to: testTo, 
-                        latitude: parseFloat(latitude), 
-                        longitude: parseFloat(longitude), 
-                        description: locationDesc 
+                    body = {
+                        to: testTo,
+                        latitude: parseFloat(latitude),
+                        longitude: parseFloat(longitude),
+                        description: locationDesc
                     };
                     if (!latitude || !longitude) throw new Error('Coordenadas inválidas');
                     break;
@@ -258,7 +315,7 @@ function InstanceDetailContent() {
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Falha ao enviar');
-            
+
             toast.success('Ação realizada com sucesso!');
 
             // Auto-fill message ID for subsequent actions
@@ -266,7 +323,7 @@ function InstanceDetailContent() {
                 setTargetMessageId(data.data.id);
                 toast('ID da mensagem capturado!', { icon: '📋' });
             }
-            
+
             // Clear specific fields if needed
             if (messageType === 'text') setTextMessage('');
         } catch (error: any) {
@@ -321,10 +378,10 @@ function InstanceDetailContent() {
                                 <h1 className="text-2xl font-bold">{instance.name}</h1>
                                 <span
                                     className={`px-2 py-1 rounded-full text-xs font-medium ${isConnected
-                                            ? 'bg-[var(--success)]/20 text-[var(--success)]'
-                                            : isConnecting
-                                                ? 'bg-[var(--warning)]/20 text-[var(--warning)]'
-                                                : 'bg-[var(--danger)]/20 text-[var(--danger)]'
+                                        ? 'bg-[var(--success)]/20 text-[var(--success)]'
+                                        : isConnecting
+                                            ? 'bg-[var(--warning)]/20 text-[var(--warning)]'
+                                            : 'bg-[var(--danger)]/20 text-[var(--danger)]'
                                         }`}
                                 >
                                     {instance.status === 'qr' ? 'Aguardando QR' : instance.status}
@@ -347,11 +404,10 @@ function InstanceDetailContent() {
                 <div className="flex gap-4 border-b border-[var(--border)] mb-6">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
-                            activeTab === 'overview'
-                                ? 'text-[var(--primary)]'
-                                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-                        }`}
+                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${activeTab === 'overview'
+                            ? 'text-[var(--primary)]'
+                            : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+                            }`}
                     >
                         Visão Geral
                         {activeTab === 'overview' && (
@@ -360,14 +416,25 @@ function InstanceDetailContent() {
                     </button>
                     <button
                         onClick={() => setActiveTab('test')}
-                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
-                            activeTab === 'test'
-                                ? 'text-[var(--primary)]'
-                                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-                        }`}
+                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${activeTab === 'test'
+                            ? 'text-[var(--primary)]'
+                            : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+                            }`}
                     >
                         Testar Envio
                         {activeTab === 'test' && (
+                            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--primary)] rounded-t-full" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${activeTab === 'settings'
+                            ? 'text-[var(--primary)]'
+                            : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+                            }`}
+                    >
+                        Configurações
+                        {activeTab === 'settings' && (
                             <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--primary)] rounded-t-full" />
                         )}
                     </button>
@@ -527,7 +594,7 @@ function InstanceDetailContent() {
                             )}
                         </div>
                     </div>
-                ) : (
+                ) : activeTab === 'test' ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
                         <div className="card p-6 md:col-span-2">
                             <h3 className="font-semibold mb-6 flex items-center gap-2">
@@ -549,11 +616,10 @@ function InstanceDetailContent() {
                                     <button
                                         key={type.id}
                                         onClick={() => setMessageType(type.id as MessageType)}
-                                        className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${
-                                            messageType === type.id
-                                                ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
-                                                : 'border-[var(--border)] hover:bg-[var(--card)] hover:border-[var(--primary)]/50'
-                                        }`}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all ${messageType === type.id
+                                            ? 'border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--primary)]'
+                                            : 'border-[var(--border)] hover:bg-[var(--card)] hover:border-[var(--primary)]/50'
+                                            }`}
                                     >
                                         <type.icon className="w-5 h-5 mb-1" />
                                         <span className="text-xs font-medium">{type.label}</span>
@@ -652,7 +718,7 @@ function InstanceDetailContent() {
                                                             className="flex-1 bg-[var(--background)] border border-[var(--border)] rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                                                         />
                                                         {pollOptions.length > 2 && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleRemovePollOption(idx)}
                                                                 className="p-2 text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-lg"
                                                             >
@@ -663,7 +729,7 @@ function InstanceDetailContent() {
                                                 ))}
                                             </div>
                                             {pollOptions.length < 12 && (
-                                                <button 
+                                                <button
                                                     onClick={handleAddPollOption}
                                                     className="mt-2 text-sm text-[var(--primary)] hover:underline flex items-center gap-1"
                                                 >
@@ -672,8 +738,8 @@ function InstanceDetailContent() {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 id="allowMultiple"
                                                 checked={allowMultipleAnswers}
                                                 onChange={(e) => setAllowMultipleAnswers(e.target.checked)}
@@ -813,7 +879,130 @@ function InstanceDetailContent() {
                             </div>
                         </div>
                     </div>
-                )}
+                ) : activeTab === 'settings' ? (
+                    <div className="max-w-2xl animate-fade-in">
+                        <div className="card p-6">
+                            <h3 className="font-semibold mb-6 flex items-center gap-2">
+                                <Settings className="w-5 h-5 text-[var(--primary)]" />
+                                Configurações de Comportamento
+                            </h3>
+
+                            <div className="space-y-4">
+                                {/* Always Online */}
+                                <div
+                                    onClick={() => toggleSetting('alwaysOnline')}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
+                                            <Bell className="w-5 h-5 text-[var(--primary)]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">Sempre Online</p>
+                                            <p className="text-sm text-[var(--muted)]">Mantém o status online 24 horas</p>
+                                        </div>
+                                    </div>
+                                    {settings.alwaysOnline ? (
+                                        <ToggleRight className="w-8 h-8 text-[var(--success)]" />
+                                    ) : (
+                                        <ToggleLeft className="w-8 h-8 text-[var(--muted)]" />
+                                    )}
+                                </div>
+
+                                {/* Ignore Groups */}
+                                <div
+                                    onClick={() => toggleSetting('ignoreGroups')}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--warning)]/10 flex items-center justify-center">
+                                            <Users className="w-5 h-5 text-[var(--warning)]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">Ignorar Grupos</p>
+                                            <p className="text-sm text-[var(--muted)]">Não processa mensagens de grupos</p>
+                                        </div>
+                                    </div>
+                                    {settings.ignoreGroups ? (
+                                        <ToggleRight className="w-8 h-8 text-[var(--success)]" />
+                                    ) : (
+                                        <ToggleLeft className="w-8 h-8 text-[var(--muted)]" />
+                                    )}
+                                </div>
+
+                                {/* Reject Calls */}
+                                <div
+                                    onClick={() => toggleSetting('rejectCalls')}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--danger)]/10 flex items-center justify-center">
+                                            <Phone className="w-5 h-5 text-[var(--danger)]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">Rejeitar Ligações</p>
+                                            <p className="text-sm text-[var(--muted)]">Recusa chamadas automaticamente</p>
+                                        </div>
+                                    </div>
+                                    {settings.rejectCalls ? (
+                                        <ToggleRight className="w-8 h-8 text-[var(--success)]" />
+                                    ) : (
+                                        <ToggleLeft className="w-8 h-8 text-[var(--muted)]" />
+                                    )}
+                                </div>
+
+                                {/* Read Messages */}
+                                <div
+                                    onClick={() => toggleSetting('readMessages')}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--success)]/10 flex items-center justify-center">
+                                            <Eye className="w-5 h-5 text-[var(--success)]" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">Ler Mensagens</p>
+                                            <p className="text-sm text-[var(--muted)]">Marca mensagens como lidas automaticamente</p>
+                                        </div>
+                                    </div>
+                                    {settings.readMessages ? (
+                                        <ToggleRight className="w-8 h-8 text-[var(--success)]" />
+                                    ) : (
+                                        <ToggleLeft className="w-8 h-8 text-[var(--muted)]" />
+                                    )}
+                                </div>
+
+                                {/* Sync Full History */}
+                                <div
+                                    onClick={() => toggleSetting('syncFullHistory')}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                            <History className="w-5 h-5 text-purple-500" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">Sincronizar Histórico</p>
+                                            <p className="text-sm text-[var(--muted)]">Sincroniza histórico completo ao conectar</p>
+                                        </div>
+                                    </div>
+                                    {settings.syncFullHistory ? (
+                                        <ToggleRight className="w-8 h-8 text-[var(--success)]" />
+                                    ) : (
+                                        <ToggleLeft className="w-8 h-8 text-[var(--muted)]" />
+                                    )}
+                                </div>
+                            </div>
+
+                            {savingSettings && (
+                                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-[var(--muted)]">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Salvando...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

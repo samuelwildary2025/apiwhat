@@ -32,8 +32,18 @@ export type WAEvent =
     | 'group_update'
     | 'call';
 
+export interface InstanceSettings {
+    alwaysOnline: boolean;
+    ignoreGroups: boolean;
+    rejectCalls: boolean;
+    readMessages: boolean;
+    syncFullHistory: boolean;
+}
+
 class WhatsAppManager extends EventEmitter {
     private instances: Map<string, WAInstance> = new Map();
+    private instanceSettings: Map<string, InstanceSettings> = new Map();
+    private alwaysOnlineIntervals: Map<string, NodeJS.Timeout> = new Map();
 
     constructor() {
         super();
@@ -171,11 +181,36 @@ class WhatsAppManager extends EventEmitter {
             this.emit('disconnected', { instanceId: id, reason });
         });
 
-        client.on('message', (msg: any) => {
+        client.on('message', async (msg: any) => {
+            const settings = this.instanceSettings.get(id);
+
+            // Ignore group messages if setting is enabled
+            if (settings?.ignoreGroups && msg.from?.endsWith('@g.us')) {
+                logger.debug({ instanceId: id }, 'Ignoring group message (ignoreGroups enabled)');
+                return;
+            }
+
+            // Auto-read messages if setting is enabled
+            if (settings?.readMessages && !msg.fromMe) {
+                try {
+                    const chat = await msg.getChat();
+                    await chat.sendSeen();
+                } catch (err) {
+                    logger.warn({ instanceId: id, err }, 'Failed to auto-read message');
+                }
+            }
+
             this.emit('message', { instanceId: id, message: this.formatMessage(msg) });
         });
 
         client.on('message_create', (msg: any) => {
+            const settings = this.instanceSettings.get(id);
+
+            // Ignore group messages if setting is enabled
+            if (settings?.ignoreGroups && msg.from?.endsWith('@g.us')) {
+                return;
+            }
+
             this.emit('message_create', { instanceId: id, message: this.formatMessage(msg) });
         });
 
@@ -203,7 +238,19 @@ class WhatsAppManager extends EventEmitter {
             this.emit('group_update', { instanceId: id, notification });
         });
 
-        client.on('call', (call: any) => {
+        client.on('call', async (call: any) => {
+            const settings = this.instanceSettings.get(id);
+
+            // Reject calls if setting is enabled
+            if (settings?.rejectCalls) {
+                try {
+                    await call.reject();
+                    logger.info({ instanceId: id, callId: call.id }, 'Call rejected (rejectCalls enabled)');
+                } catch (err) {
+                    logger.warn({ instanceId: id, err }, 'Failed to reject call');
+                }
+            }
+
             this.emit('call', { instanceId: id, call });
         });
     }
@@ -1061,6 +1108,88 @@ class WhatsAppManager extends EventEmitter {
         }
 
         return cleaned;
+    }
+
+    // ================================
+    // Settings Management
+    // ================================
+
+    getInstanceSettings(instanceId: string): InstanceSettings | undefined {
+        return this.instanceSettings.get(instanceId);
+    }
+
+    updateInstanceSettings(instanceId: string, settings: Partial<InstanceSettings>) {
+        const currentSettings = this.instanceSettings.get(instanceId) || {
+            alwaysOnline: false,
+            ignoreGroups: false,
+            rejectCalls: false,
+            readMessages: false,
+            syncFullHistory: false,
+        };
+
+        const newSettings = { ...currentSettings, ...settings };
+        this.instanceSettings.set(instanceId, newSettings);
+
+        logger.info({ instanceId, settings: newSettings }, 'Instance settings updated');
+
+        // Handle alwaysOnline toggle
+        this.handleAlwaysOnline(instanceId, newSettings.alwaysOnline);
+    }
+
+    private handleAlwaysOnline(instanceId: string, enabled: boolean) {
+        // Clear existing interval if any
+        const existingInterval = this.alwaysOnlineIntervals.get(instanceId);
+        if (existingInterval) {
+            clearInterval(existingInterval);
+            this.alwaysOnlineIntervals.delete(instanceId);
+        }
+
+        if (enabled) {
+            const client = this.getClient(instanceId);
+            if (client) {
+                // Set available immediately
+                client.sendPresenceAvailable().catch((err: any) => {
+                    logger.warn({ instanceId, err }, 'Failed to set presence available');
+                });
+
+                // Set up interval to keep online (every 4 minutes)
+                const interval = setInterval(() => {
+                    const c = this.getClient(instanceId);
+                    if (c) {
+                        c.sendPresenceAvailable().catch((err: any) => {
+                            logger.warn({ instanceId, err }, 'Failed to maintain presence available');
+                        });
+                    }
+                }, 4 * 60 * 1000);
+
+                this.alwaysOnlineIntervals.set(instanceId, interval);
+                logger.info({ instanceId }, 'Always online enabled');
+            }
+        } else {
+            logger.info({ instanceId }, 'Always online disabled');
+        }
+    }
+
+    async loadInstanceSettings(instanceId: string) {
+        try {
+            const instance = await prisma.instance.findUnique({
+                where: { id: instanceId },
+                select: {
+                    alwaysOnline: true,
+                    ignoreGroups: true,
+                    rejectCalls: true,
+                    readMessages: true,
+                    syncFullHistory: true,
+                },
+            });
+
+            if (instance) {
+                this.instanceSettings.set(instanceId, instance);
+                logger.info({ instanceId, settings: instance }, 'Loaded instance settings');
+            }
+        } catch (error) {
+            logger.error({ instanceId, error }, 'Failed to load instance settings');
+        }
     }
 }
 

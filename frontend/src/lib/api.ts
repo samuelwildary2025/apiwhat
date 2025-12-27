@@ -153,6 +153,24 @@ class ApiClient {
         });
     }
 
+    // Instance Settings
+    async getInstanceSettings(id: string) {
+        return this.request(`/instance/${id}/settings`);
+    }
+
+    async updateInstanceSettings(id: string, settings: {
+        alwaysOnline?: boolean;
+        ignoreGroups?: boolean;
+        rejectCalls?: boolean;
+        readMessages?: boolean;
+        syncFullHistory?: boolean;
+    }) {
+        return this.request(`/instance/${id}/settings`, {
+            method: 'PATCH',
+            body: JSON.stringify(settings),
+        });
+    }
+
     // Campaigns
     async getCampaigns() {
         return this.request('/campaigns');

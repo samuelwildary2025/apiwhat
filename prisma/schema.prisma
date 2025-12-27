@@ -87,6 +87,13 @@ model Instance {
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  // Behavior Settings
+  alwaysOnline    Boolean        @default(false)
+  ignoreGroups    Boolean        @default(false)
+  rejectCalls     Boolean        @default(false)
+  readMessages    Boolean        @default(false)
+  syncFullHistory Boolean        @default(false)
+  
   // Relations
   campaigns     Campaign[]
   labels        Label[]

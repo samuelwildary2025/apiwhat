@@ -16,6 +16,14 @@ const updateNameSchema = z.object({
     name: z.string().min(1).max(100),
 });
 
+const updateSettingsSchema = z.object({
+    alwaysOnline: z.boolean().optional(),
+    ignoreGroups: z.boolean().optional(),
+    rejectCalls: z.boolean().optional(),
+    readMessages: z.boolean().optional(),
+    syncFullHistory: z.boolean().optional(),
+});
+
 // ================================
 // Instance Connection Routes
 // ================================
@@ -401,6 +409,92 @@ instance.post('/:id/webhook', authMiddleware, async (c) => {
             webhookUrl: updated.webhookUrl,
             webhookEvents: updated.webhookEvents,
         },
+    });
+});
+
+// ================================
+// Instance Settings Routes
+// ================================
+
+/**
+ * GET /instance/:id/settings
+ * Get instance behavior settings
+ */
+instance.get('/:id/settings', authMiddleware, async (c) => {
+    const { id } = c.req.param();
+    const user = c.get('user');
+
+    const instanceData = await prisma.instance.findFirst({
+        where: {
+            id,
+            OR: [{ userId: user.userId }, { user: { role: 'ADMIN' } }],
+        },
+        select: {
+            id: true,
+            alwaysOnline: true,
+            ignoreGroups: true,
+            rejectCalls: true,
+            readMessages: true,
+            syncFullHistory: true,
+        },
+    });
+
+    if (!instanceData) {
+        throw new HTTPException(404, { message: 'Instance not found' });
+    }
+
+    return c.json({
+        success: true,
+        data: instanceData,
+    });
+});
+
+/**
+ * PATCH /instance/:id/settings
+ * Update instance behavior settings
+ */
+instance.patch('/:id/settings', authMiddleware, async (c) => {
+    const { id } = c.req.param();
+    const user = c.get('user');
+    const body = await c.req.json();
+    const data = updateSettingsSchema.parse(body);
+
+    const instanceData = await prisma.instance.findFirst({
+        where: {
+            id,
+            OR: [{ userId: user.userId }, { user: { role: 'ADMIN' } }],
+        },
+    });
+
+    if (!instanceData) {
+        throw new HTTPException(404, { message: 'Instance not found' });
+    }
+
+    const updated = await prisma.instance.update({
+        where: { id },
+        data: {
+            ...(data.alwaysOnline !== undefined && { alwaysOnline: data.alwaysOnline }),
+            ...(data.ignoreGroups !== undefined && { ignoreGroups: data.ignoreGroups }),
+            ...(data.rejectCalls !== undefined && { rejectCalls: data.rejectCalls }),
+            ...(data.readMessages !== undefined && { readMessages: data.readMessages }),
+            ...(data.syncFullHistory !== undefined && { syncFullHistory: data.syncFullHistory }),
+        },
+        select: {
+            id: true,
+            alwaysOnline: true,
+            ignoreGroups: true,
+            rejectCalls: true,
+            readMessages: true,
+            syncFullHistory: true,
+        },
+    });
+
+    // Notify WhatsApp manager about settings change
+    waManager.updateInstanceSettings(id, updated);
+
+    return c.json({
+        success: true,
+        data: updated,
     });
 });
 
