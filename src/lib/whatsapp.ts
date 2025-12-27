@@ -55,7 +55,7 @@ class WhatsAppManager extends EventEmitter {
 
         // Fetch instance config (Proxy)
         const instanceConfig = await prisma.instance.findUnique({ where: { id: instanceId } });
-        
+
         const puppeteerArgs = [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -80,12 +80,12 @@ class WhatsAppManager extends EventEmitter {
         if (instanceConfig?.proxyHost && instanceConfig?.proxyPort) {
             const protocol = instanceConfig.proxyProtocol || 'http';
             let proxyUrl = `${protocol}://${instanceConfig.proxyHost}:${instanceConfig.proxyPort}`;
-            
+
             // If auth is provided, we try to embed it in the URL (supported by some setups)
             // Note: Chromium supports auth in proxy-server arg in some versions, or requires separate auth handling.
             // For standard HTTP proxies, this is the first step.
             if (instanceConfig.proxyUsername && instanceConfig.proxyPassword) {
-                 proxyUrl = `${protocol}://${instanceConfig.proxyUsername}:${instanceConfig.proxyPassword}@${instanceConfig.proxyHost}:${instanceConfig.proxyPort}`;
+                proxyUrl = `${protocol}://${instanceConfig.proxyUsername}:${instanceConfig.proxyPassword}@${instanceConfig.proxyHost}:${instanceConfig.proxyPort}`;
             }
 
             puppeteerArgs.push(`--proxy-server=${proxyUrl}`);
@@ -339,24 +339,21 @@ class WhatsAppManager extends EventEmitter {
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
         const chatId = this.formatNumber(to);
-        
-        // Verify if number is registered on WhatsApp
-        try {
-            const isRegistered = await client.isRegisteredUser(chatId);
-            if (!isRegistered) {
-                throw new Error(`Number ${to} is not registered on WhatsApp`);
-            }
-        } catch (error: any) {
-            // If the check fails (e.g. LID error), we log but try to send anyway
-            // Only rethrow if it's the specific "not registered" error we just threw
-            if (error.message && error.message.includes('not registered on WhatsApp')) {
-                throw error;
-            }
-            logger.warn({ instanceId, error: error.message }, 'Failed to verify number registration, attempting to send anyway');
-        }
 
-        const result = await client.sendMessage(chatId, text);
-        return this.formatMessage(result);
+        // Note: isRegisteredUser check removed due to "No LID for user" bug in whatsapp-web.js
+        // The sendMessage call will fail naturally if the number is not registered
+
+        try {
+            const result = await client.sendMessage(chatId, text);
+            return this.formatMessage(result);
+        } catch (error: any) {
+            // Handle LID-related errors gracefully
+            if (error.message && error.message.includes('LID')) {
+                logger.error({ instanceId, to, error: error.message }, 'LID error during sendMessage');
+                throw new Error(`Failed to send message: WhatsApp internal error. Please try again or verify the number.`);
+            }
+            throw error;
+        }
     }
 
     async sendMedia(
@@ -425,7 +422,7 @@ class WhatsAppManager extends EventEmitter {
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
 
         const chatId = this.formatNumber(to);
-        
+
         switch (presence) {
             case 'unavailable':
                 await client.sendPresenceUnavailable();
@@ -492,8 +489,8 @@ class WhatsAppManager extends EventEmitter {
     }
 
     async downloadMedia(
-        instanceId: string, 
-        messageId: string, 
+        instanceId: string,
+        messageId: string,
         options: {
             returnBase64?: boolean;
             generateMp3?: boolean;
@@ -539,7 +536,7 @@ class WhatsAppManager extends EventEmitter {
             const filePath = path.join(publicMediaDir, filename);
 
             fs.writeFileSync(filePath, media.data, 'base64');
-            
+
             // In a real scenario, you'd construct the full URL based on your server config
             // For now, returning relative path or assuming a base URL if available
             result.link = `/media/${filename}`;
@@ -554,11 +551,11 @@ class WhatsAppManager extends EventEmitter {
         }
 
         if (options.transcribe && media.mimetype.includes('audio')) {
-             if (!options.openaiKey) {
-                 result.transcriptionWarning = "OpenAI API Key required for transcription.";
-             } else {
-                 result.transcriptionWarning = "Transcription requires ffmpeg for audio conversion. Skipping.";
-             }
+            if (!options.openaiKey) {
+                result.transcriptionWarning = "OpenAI API Key required for transcription.";
+            } else {
+                result.transcriptionWarning = "Transcription requires ffmpeg for audio conversion. Skipping.";
+            }
         }
 
         return result;
@@ -935,9 +932,9 @@ class WhatsAppManager extends EventEmitter {
     async getLabels(instanceId: string) {
         const client = this.getClient(instanceId);
         if (!client) throw new Error(`Instance ${instanceId} not connected`);
-        
+
         if (!client.getLabels) throw new Error('Labels not supported by this instance version');
-        
+
         const labels = await client.getLabels();
         return labels.map((l: any) => ({
             id: l.id,
@@ -953,7 +950,7 @@ class WhatsAppManager extends EventEmitter {
 
         const chat = await client.getChatById(this.formatNumber(chatId));
         if (!chat.getLabels) return [];
-        
+
         const labels = await chat.getLabels();
         return labels.map((l: any) => ({
             id: l.id,
@@ -968,7 +965,7 @@ class WhatsAppManager extends EventEmitter {
 
         const chat = await client.getChatById(this.formatNumber(chatId));
         if (!chat.changeLabels) throw new Error('Label management not supported on this chat');
-        
+
         let currentLabels = (await chat.getLabels() || []).map((l: any) => l.id);
         if (!currentLabels.includes(labelId)) {
             await chat.changeLabels([...currentLabels, labelId]);
@@ -981,7 +978,7 @@ class WhatsAppManager extends EventEmitter {
 
         const chat = await client.getChatById(this.formatNumber(chatId));
         if (!chat.changeLabels) throw new Error('Label management not supported on this chat');
-        
+
         let currentLabels = (await chat.getLabels() || []).map((l: any) => l.id);
         await chat.changeLabels(currentLabels.filter((id: string) => id !== labelId));
     }
