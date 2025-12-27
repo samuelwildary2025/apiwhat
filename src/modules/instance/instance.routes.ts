@@ -456,46 +456,55 @@ instance.get('/:id/settings', authMiddleware, async (c) => {
 instance.patch('/:id/settings', authMiddleware, async (c) => {
     const { id } = c.req.param();
     const user = c.get('user');
-    const body = await c.req.json();
-    const data = updateSettingsSchema.parse(body);
 
-    const instanceData = await prisma.instance.findFirst({
-        where: {
-            id,
-            OR: [{ userId: user.userId }, { user: { role: 'ADMIN' } }],
-        },
-    });
+    try {
+        const body = await c.req.json();
+        const data = updateSettingsSchema.parse(body);
 
-    if (!instanceData) {
-        throw new HTTPException(404, { message: 'Instance not found' });
+        const instanceData = await prisma.instance.findFirst({
+            where: {
+                id,
+                OR: [{ userId: user.userId }, { user: { role: 'ADMIN' } }],
+            },
+        });
+
+        if (!instanceData) {
+            throw new HTTPException(404, { message: 'Instance not found' });
+        }
+
+        const updated = await prisma.instance.update({
+            where: { id },
+            data: {
+                ...(data.alwaysOnline !== undefined && { alwaysOnline: data.alwaysOnline }),
+                ...(data.ignoreGroups !== undefined && { ignoreGroups: data.ignoreGroups }),
+                ...(data.rejectCalls !== undefined && { rejectCalls: data.rejectCalls }),
+                ...(data.readMessages !== undefined && { readMessages: data.readMessages }),
+                ...(data.syncFullHistory !== undefined && { syncFullHistory: data.syncFullHistory }),
+            },
+            select: {
+                id: true,
+                alwaysOnline: true,
+                ignoreGroups: true,
+                rejectCalls: true,
+                readMessages: true,
+                syncFullHistory: true,
+            },
+        });
+
+        // Notify WhatsApp manager about settings change
+        waManager.updateInstanceSettings(id, updated);
+
+        return c.json({
+            success: true,
+            data: updated,
+        });
+    } catch (error: any) {
+        console.error('Error updating settings:', error);
+        return c.json({
+            success: false,
+            error: error.message || 'Failed to update settings',
+        }, 500);
     }
-
-    const updated = await prisma.instance.update({
-        where: { id },
-        data: {
-            ...(data.alwaysOnline !== undefined && { alwaysOnline: data.alwaysOnline }),
-            ...(data.ignoreGroups !== undefined && { ignoreGroups: data.ignoreGroups }),
-            ...(data.rejectCalls !== undefined && { rejectCalls: data.rejectCalls }),
-            ...(data.readMessages !== undefined && { readMessages: data.readMessages }),
-            ...(data.syncFullHistory !== undefined && { syncFullHistory: data.syncFullHistory }),
-        },
-        select: {
-            id: true,
-            alwaysOnline: true,
-            ignoreGroups: true,
-            rejectCalls: true,
-            readMessages: true,
-            syncFullHistory: true,
-        },
-    });
-
-    // Notify WhatsApp manager about settings change
-    waManager.updateInstanceSettings(id, updated);
-
-    return c.json({
-        success: true,
-        data: updated,
-    });
 });
 
 export { instance as instanceRoutes };
