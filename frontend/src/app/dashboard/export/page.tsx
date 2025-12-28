@@ -16,6 +16,7 @@ interface Instance {
     id: string;
     name: string;
     status: string;
+    token: string;
     waNumber?: string;
 }
 
@@ -51,7 +52,7 @@ export default function ExportPage() {
             const response = await api.getInstances();
             if (response.success) {
                 // Show all instances, not just connected ones
-                const allInstances = response.data || [];
+                const allInstances: Instance[] = Array.isArray(response.data) ? response.data : [];
                 setInstances(allInstances);
                 if (allInstances.length > 0) {
                     // Prefer connected instances, but allow any
@@ -80,7 +81,7 @@ export default function ExportPage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Instance-Token': instance.id,
+                    'X-Instance-Token': instance.token,
                 },
                 body: JSON.stringify({ page: 1, limit: 100, filter: 'all' }),
             });
@@ -142,7 +143,7 @@ export default function ExportPage() {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-Instance-Token': instance.id,
+                            'X-Instance-Token': instance.token,
                         },
                         body: JSON.stringify({
                             chatId: chat.id,
