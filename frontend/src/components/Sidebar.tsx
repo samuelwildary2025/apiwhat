@@ -10,7 +10,8 @@ import {
     Settings,
     LogOut,
     User,
-    ChevronRight
+    ChevronRight,
+    Download
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -34,6 +35,7 @@ export function Sidebar() {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Smartphone, label: 'Instâncias', path: '/dashboard/instances' },
         { icon: Megaphone, label: 'Campanhas', path: '/dashboard/campaigns' },
+        { icon: Download, label: 'Exportar', path: '/dashboard/export' },
         { icon: Settings, label: 'Configurações', path: '/dashboard/settings' },
     ];
 
@@ -58,11 +60,10 @@ export function Sidebar() {
                     <Link
                         key={item.path}
                         href={item.path}
-                        className={`group flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                            isActive(item.path)
+                        className={`group flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive(item.path)
                                 ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-medium'
                                 : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'
-                        }`}
+                            }`}
                     >
                         <div className="flex items-center gap-3">
                             <item.icon className={`w-5 h-5 ${isActive(item.path) ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)] group-hover:text-[var(--foreground)]'}`} />
