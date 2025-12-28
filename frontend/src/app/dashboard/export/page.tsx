@@ -70,12 +70,25 @@ export default function ExportPage() {
     };
 
     const loadChats = async () => {
-        if (!selectedInstance) return;
+        if (!selectedInstance) {
+            toast.error('Selecione uma instância primeiro');
+            return;
+        }
 
         try {
             setLoadingChats(true);
             const instance = instances.find(i => i.id === selectedInstance);
-            if (!instance) return;
+            if (!instance) {
+                toast.error('Instância não encontrada');
+                return;
+            }
+
+            if (!instance.token) {
+                toast.error('Token da instância não encontrado');
+                return;
+            }
+
+            console.log('Loading chats for instance:', instance.id, 'token:', instance.token);
 
             const response = await fetch(`/chats/search`, {
                 method: 'POST',
@@ -87,12 +100,29 @@ export default function ExportPage() {
             });
 
             const data = await response.json();
-            if (data.success) {
-                setChats(data.data || []);
+            console.log('Chats response:', data);
+
+            if (!response.ok) {
+                throw new Error(data.message || `Erro ${response.status}`);
             }
-        } catch (error) {
+
+            if (data.success) {
+                // Handle different response formats
+                const chatsList = data.data?.chats || data.data || [];
+                console.log('Loaded chats:', chatsList.length);
+                setChats(Array.isArray(chatsList) ? chatsList : []);
+
+                if (chatsList.length === 0) {
+                    toast('Nenhuma conversa encontrada', { icon: 'ℹ️' });
+                } else {
+                    toast.success(`${chatsList.length} conversas carregadas!`);
+                }
+            } else {
+                throw new Error(data.message || 'Erro ao carregar conversas');
+            }
+        } catch (error: any) {
             console.error('Error loading chats:', error);
-            toast.error('Erro ao carregar conversas');
+            toast.error(error.message || 'Erro ao carregar conversas');
         } finally {
             setLoadingChats(false);
         }
