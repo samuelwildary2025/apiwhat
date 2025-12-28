@@ -122,7 +122,13 @@ export default function ExportPage() {
             return;
         }
 
-        if (selectedChats.size === 0 && chats.length > 0) {
+        // Safety check - ensure chats is an array
+        if (!Array.isArray(chats) || chats.length === 0) {
+            toast.error('Carregue as conversas antes de exportar');
+            return;
+        }
+
+        if (selectedChats.size === 0) {
             toast.error('Selecione pelo menos uma conversa');
             return;
         }
@@ -133,9 +139,9 @@ export default function ExportPage() {
             if (!instance) throw new Error('Instância não encontrada');
 
             const allMessages: any[] = [];
-            const chatsToExport = selectedChats.size > 0
-                ? chats.filter(c => selectedChats.has(c.id))
-                : chats;
+            const chatsToExport = Array.from(selectedChats)
+                .map(chatId => chats.find(c => c.id === chatId))
+                .filter(Boolean) as Chat[];
 
             for (const chat of chatsToExport) {
                 try {
