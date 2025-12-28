@@ -50,10 +50,15 @@ export default function ExportPage() {
             setLoadingInstances(true);
             const response = await api.getInstances();
             if (response.success) {
-                const connectedInstances = response.data.filter((i: Instance) => i.status === 'connected');
-                setInstances(connectedInstances);
-                if (connectedInstances.length > 0) {
-                    setSelectedInstance(connectedInstances[0].id);
+                // Show all instances, not just connected ones
+                const allInstances = response.data || [];
+                setInstances(allInstances);
+                if (allInstances.length > 0) {
+                    // Prefer connected instances, but allow any
+                    const connectedInstance = allInstances.find((i: Instance) =>
+                        i.status?.toLowerCase() === 'connected'
+                    );
+                    setSelectedInstance(connectedInstance?.id || allInstances[0].id);
                 }
             }
         } catch (error) {
@@ -219,7 +224,7 @@ export default function ExportPage() {
                         </div>
                     ) : instances.length === 0 ? (
                         <p className="text-[var(--muted-foreground)]">
-                            Nenhuma instância conectada. Conecte uma instância primeiro.
+                            Nenhuma instância encontrada. Crie uma instância primeiro.
                         </p>
                     ) : (
                         <select
@@ -233,7 +238,7 @@ export default function ExportPage() {
                         >
                             {instances.map((instance) => (
                                 <option key={instance.id} value={instance.id}>
-                                    {instance.name} {instance.waNumber ? `(${instance.waNumber})` : ''}
+                                    {instance.name} {instance.waNumber ? `(${instance.waNumber})` : ''} - {instance.status}
                                 </option>
                             ))}
                         </select>
@@ -252,8 +257,8 @@ export default function ExportPage() {
                                 key={count}
                                 onClick={() => setMessageCount(count)}
                                 className={`px-4 py-2 rounded-lg border transition-colors ${messageCount === count
-                                        ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-                                        : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]'
+                                    ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                                    : 'bg-[var(--background)] border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]'
                                     }`}
                             >
                                 {count}
@@ -305,8 +310,8 @@ export default function ExportPage() {
                                 <label
                                     key={chat.id}
                                     className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedChats.has(chat.id)
-                                            ? 'bg-[var(--primary)]/10'
-                                            : 'hover:bg-[var(--accent)]'
+                                        ? 'bg-[var(--primary)]/10'
+                                        : 'hover:bg-[var(--accent)]'
                                         }`}
                                 >
                                     <input
