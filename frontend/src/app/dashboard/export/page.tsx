@@ -201,26 +201,73 @@ export default function ExportPage() {
                 }
             }
 
-            // Generate export file
-            const exportData = {
-                exportedAt: new Date().toISOString(),
-                instance: {
-                    id: instance.id,
-                    name: instance.name,
-                    number: instance.waNumber,
-                },
-                messageCountPerChat: messageCount,
-                totalChats: allMessages.length,
-                conversations: allMessages,
+            // Helper to format timestamp
+            const formatTime = (ts: number) => {
+                const date = new Date(ts * 1000);
+                return date.toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
             };
 
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-                type: 'application/json',
+            // Helper to extract phone number
+            const extractPhone = (id: string) => {
+                return id.replace('@c.us', '').replace('@g.us', '');
+            };
+
+            // Generate clean text format
+            let exportText = `╔══════════════════════════════════════════════════════════════════╗
+║                    EXPORTAÇÃO WHATSAPP                           ║
+║                    ${new Date().toLocaleString('pt-BR')}                        ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Instância: ${instance.name} (${instance.waNumber || 'N/A'})
+Total de conversas: ${allMessages.length}
+Mensagens por conversa: ${messageCount}
+
+`;
+
+            for (const conv of allMessages) {
+                const phone = extractPhone(conv.chatId);
+                exportText += `
+════════════════════════════════════════════════════════════════════
+📱 ${conv.chatName || phone}
+📞 ${phone}
+${conv.isGroup ? '👥 Grupo' : '👤 Contato'}
+════════════════════════════════════════════════════════════════════
+`;
+
+                // Sort messages by timestamp (oldest first)
+                const sortedMessages = [...(conv.messages || [])].sort((a: any, b: any) => a.timestamp - b.timestamp);
+
+                for (const msg of sortedMessages) {
+                    const time = formatTime(msg.timestamp);
+                    const sender = msg.fromMe ? '← EU' : `→ ${extractPhone(msg.from)}`;
+                    const content = msg.body || (msg.hasMedia ? '[Mídia]' : '[Mensagem vazia]');
+
+                    exportText += `[${time}] ${sender}
+${content}
+---
+`;
+                }
+            }
+
+            exportText += `
+══════════════════════════════════════════════════════════════════
+                        FIM DA EXPORTAÇÃO
+══════════════════════════════════════════════════════════════════
+`;
+
+            const blob = new Blob([exportText], {
+                type: 'text/plain;charset=utf-8',
             });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `whatsapp-export-${instance.name}-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `whatsapp-export-${instance.name}-${new Date().toISOString().split('T')[0]}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
